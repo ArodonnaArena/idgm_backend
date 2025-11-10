@@ -1,0 +1,415 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  LAND
+}
+
+enum UnitStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum LeaseStatus {
+  ACTIVE
+  TERMINATED
+  EXPIRED
+  PENDING
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Role {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String    @unique
+  description String?
+  users       UserRole[]
+  permissions Permission[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Permission {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  action    String
+  role      Role      @relation(fields: [roleId], references: [id])
+  roleId    String    @db.ObjectId
+  @@unique([roleId, action])
+}
+
+model User {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  email         String      @unique
+  phone         String?     @unique
+  passwordHash  String?
+  name          String?
+  image         String?
+  status        UserStatus  @default(ACTIVE)
+  tenantProfile TenantProfile?
+  landlordProfile LandlordProfile?
+  staffProfile  StaffProfile?
+  roles         UserRole[]
+  addresses     Address[]
+  carts         Cart[]
+  orders        Order[]
+  payments      Payment[]
+  tickets       MaintenanceTicket[] @relation("TicketAuthor")
+  accounts      Account[]
+  sessions      Session[]
+  wishlist      WishlistItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model UserRole {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @db.ObjectId
+  role   Role   @relation(fields: [roleId], references: [id])
+  roleId String @db.ObjectId
+  @@unique([userId, roleId])
+}
+
+model Category {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  slug      String     @unique
+  name      String
+  parentId  String?    @db.ObjectId
+  parent    Category?  @relation("CategoryToParent", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children  Category[] @relation("CategoryToParent")
+  products  Product[]
+}
+
+model Product {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  sku          String         @unique
+  slug         String         @unique
+  name         String
+  description  String?
+  price        Float
+  compareAt    Float?
+  currency     String         @default("NGN")
+  categoryId   String         @db.ObjectId
+  category     Category       @relation(fields: [categoryId], references: [id])
+  images       ProductImage[]
+  inventory    Inventory?
+  attributes   Json?
+  isActive     Boolean        @default(true)
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+  wishlistItems WishlistItem[]
+  flashSales   FlashSale[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model FlashSale {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  description    String?
+  productId      String   @db.ObjectId
+  product        Product  @relation(fields: [productId], references: [id])
+  discountPercent Int
+  flashPrice     Float
+  startTime      DateTime
+  endTime        DateTime
+  maxQuantity    Int?
+  soldCount      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ProductImage {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  url       String
+  alt       String?
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Inventory {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  productId  String  @unique @db.ObjectId
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int     @default(0)
+  threshold  Int     @default(0)
+}
+
+model Cart {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?    @db.ObjectId
+  user      User?      @relation(fields: [userId], references: [id])
+  items     CartItem[]
+  currency  String     @default("NGN")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  cartId    String  @db.ObjectId
+  cart      Cart    @relation(fields: [cartId], references: [id])
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+  price     Float
+}
+
+model Order {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String?      @db.ObjectId
+  user        User?        @relation(fields: [userId], references: [id])
+  status      OrderStatus  @default(PENDING)
+  items       OrderItem[]
+  total       Float
+  currency    String       @default("NGN")
+  shipping    Address?     @relation("OrderShipping", fields: [shippingId], references: [id])
+  shippingId  String?      @db.ObjectId
+  billing     Address?     @relation("OrderBilling", fields: [billingId], references: [id])
+  billingId   String?      @db.ObjectId
+  payment     Payment?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String  @db.ObjectId
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+}
+
+model Address {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String?  @db.ObjectId
+  user            User?    @relation(fields: [userId], references: [id])
+  line1           String
+  line2           String?
+  city            String
+  state           String
+  country         String   @default("NG")
+  postcode        String?
+  shippingOrders  Order[]  @relation("OrderShipping")
+  billingOrders   Order[]  @relation("OrderBilling")
+}
+
+model Payment {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId      String?       @unique @db.ObjectId
+  order        Order?        @relation(fields: [orderId], references: [id])
+  invoiceId    String?       @db.ObjectId
+  invoice      Invoice?      @relation(fields: [invoiceId], references: [id])
+  userId       String?       @db.ObjectId
+  user         User?         @relation(fields: [userId], references: [id])
+  provider     String
+  reference    String        @unique
+  amount       Float
+  currency     String        @default("NGN")
+  status       PaymentStatus @default(INITIATED)
+  raw          Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Property {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  slug        String            @unique
+  description String?
+  type        PropertyType
+  address     String
+  city        String
+  state       String
+  country     String            @default("NG")
+  price       Float?
+  images      PropertyImage[]
+  units       Unit[]
+  landlord    LandlordProfile?  @relation(fields: [landlordId], references: [id])
+  landlordId  String?           @db.ObjectId
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model PropertyImage {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  url        String
+  alt        String?
+  propertyId String   @db.ObjectId
+  property   Property @relation(fields: [propertyId], references: [id])
+}
+
+model Unit {
+  id          String              @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId  String              @db.ObjectId
+  property    Property            @relation(fields: [propertyId], references: [id])
+  label       String
+  bedrooms    Int?
+  bathrooms   Int?
+  sizeSqm     Int?
+  status      UnitStatus          @default(AVAILABLE)
+  leases      Lease[]
+  rent        Float?
+  tickets     MaintenanceTicket[]
+}
+
+model TenantProfile {
+  id        String              @id @default(auto()) @map("_id") @db.ObjectId
+  user      User                @relation(fields: [userId], references: [id])
+  userId    String              @unique @db.ObjectId
+  nin       String?             @unique
+  phoneAlt  String?
+  leases    Lease[]
+  tickets   MaintenanceTicket[] @relation("TicketTenant")
+}
+
+model LandlordProfile {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  user       User       @relation(fields: [userId], references: [id])
+  userId     String     @unique @db.ObjectId
+  company    String?
+  properties Property[]
+}
+
+model StaffProfile {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  user     User    @relation(fields: [userId], references: [id])
+  userId   String  @unique @db.ObjectId
+  roleNote String?
+}
+
+model Lease {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  unitId     String        @db.ObjectId
+  unit       Unit          @relation(fields: [unitId], references: [id])
+  tenantId   String        @db.ObjectId
+  tenant     TenantProfile @relation(fields: [tenantId], references: [id])
+  startDate  DateTime
+  endDate    DateTime
+  deposit    Float?
+  rent       Float
+  status     LeaseStatus   @default(ACTIVE)
+  invoices   Invoice[]
+}
+
+model Invoice {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  leaseId   String        @db.ObjectId
+  lease     Lease         @relation(fields: [leaseId], references: [id])
+  amount    Float
+  dueDate   DateTime
+  status    InvoiceStatus @default(PENDING)
+  payments  Payment[]
+}
+
+model MaintenanceTicket {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  status      TicketStatus    @default(OPEN)
+  priority    TicketPriority  @default(MEDIUM)
+  authorId    String          @db.ObjectId
+  author      User            @relation("TicketAuthor", fields: [authorId], references: [id])
+  tenantId    String?         @db.ObjectId
+  tenant      TenantProfile?  @relation("TicketTenant", fields: [tenantId], references: [id])
+  unitId      String?         @db.ObjectId
+  unit        Unit?           @relation(fields: [unitId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model FileAsset {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  url       String
+  type      String
+  size      Int
+  ownerId   String?  @db.ObjectId
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
