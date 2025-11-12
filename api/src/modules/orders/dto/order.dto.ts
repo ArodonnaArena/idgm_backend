@@ -1,5 +1,14 @@
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator'
-import { OrderStatus } from '@prisma/client'
+
+// Local enum mirror of Prisma OrderStatus to avoid client export differences
+export const ORDER_STATUS = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FULFILLED: 'FULFILLED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+} as const
+export type OrderStatus = typeof ORDER_STATUS[keyof typeof ORDER_STATUS]
 
 export class CreateOrderItemDto {
   @IsString()
@@ -36,6 +45,6 @@ export class CreateOrderDto {
 }
 
 export class UpdateOrderStatusDto {
-  @IsEnum(OrderStatus)
+  @IsEnum(ORDER_STATUS)
   status: OrderStatus
 }

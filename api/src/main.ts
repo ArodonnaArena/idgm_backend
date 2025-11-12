@@ -6,7 +6,12 @@ import * as path from 'path'
 import * as express from 'express'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: { origin: [/localhost:\d+$/], credentials: true } })
+  const app = await NestFactory.create(AppModule, {
+    cors: {
+      origin: [/localhost:\d+$/, 'https://idgm-web.vercel.app', /\.vercel\.app$/],
+      credentials: true
+    }
+  })
   app.setGlobalPrefix('api')
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   // Serve uploaded files statically

@@ -5,8 +5,8 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "build": "nest build",
-    "prisma:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "prisma:generate": "prisma generate --schema ../../packages/db/prisma/schema.prisma",
+    "postinstall": "prisma generate --schema ../../packages/db/prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -16,7 +16,6 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.3.0",
     "@nestjs/swagger": "^7.3.1",
-    "@prisma/client": "^5.17.0",
     "@types/multer": "^2.0.0",
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
@@ -33,11 +32,10 @@
     "@nestjs/cli": "^10.3.2",
     "@nestjs/schematics": "^10.0.1",
     "@nestjs/testing": "^10.3.0",
-    "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.0"
   },
   "prisma": {
-    "schema": "./prisma/schema.prisma"
+    "schema": "../../packages/db/prisma/schema.prisma"
   }
 }

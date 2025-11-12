@@ -1,5 +1,12 @@
 import { IsEmail, IsString, IsOptional, IsEnum, IsArray } from 'class-validator'
-import { UserStatus } from '@prisma/client'
+
+// Local enum mirror of Prisma UserStatus to avoid client export differences
+export const USER_STATUS = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SUSPENDED: 'SUSPENDED',
+} as const
+export type UserStatus = typeof USER_STATUS[keyof typeof USER_STATUS]
 
 export class CreateUserDto {
   @IsEmail()
@@ -17,7 +24,7 @@ export class CreateUserDto {
   phone?: string
 
   @IsOptional()
-  @IsEnum(UserStatus)
+  @IsEnum(USER_STATUS)
   status?: UserStatus
 
   @IsOptional()
@@ -40,7 +47,7 @@ export class UpdateUserDto {
   phone?: string
 
   @IsOptional()
-  @IsEnum(UserStatus)
+  @IsEnum(USER_STATUS)
   status?: UserStatus
 }
 
